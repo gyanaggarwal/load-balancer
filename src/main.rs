@@ -18,18 +18,18 @@ fn main() {
     let rr_lb = RoundRobinLoadBalancer::new(slist0);
     let lc_lb = LeastConnectionsLoadBalancer::new(slist1);
 
-    check_loadbalancer(rr_lb);
-    check_loadbalancer(lc_lb);
+    check_loadbalancer(rr_lb, "RR");
+    check_loadbalancer(lc_lb, "LC");
 
     println!("Hello, world!");
 }
 
-fn check_loadbalancer(lb: impl LoadBalancer) {
+fn check_loadbalancer(lb: impl LoadBalancer, name: &str) {
     let alb = Arc::new(RwLock::new(lb));
     let mut lb0 = alb.write().unwrap();
 
-    for i in [0, 1, 2, 3, 4]{
+    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]{
         let server = lb0.next_server();
-        println!("server {} {}", i, server);
+        println!("server {} {} {}", name, i, server);
     }
 }
