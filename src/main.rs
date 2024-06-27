@@ -1,5 +1,8 @@
+use std::sync::{Arc, RwLock};
+
 use load_balancer::services::{round_robin::RoundRobinLoadBalancer, 
                               least_connections::LeastConnectionsLoadBalancer};
+use load_balancer::domain::load_balancer::LoadBalancer;
 
 fn main() {
     let mut slist0 = Vec::new();
@@ -12,8 +15,21 @@ fn main() {
     
     let slist1 = slist0.clone();
 
-    let _ = RoundRobinLoadBalancer::new(slist0);
-    let _ = LeastConnectionsLoadBalancer::new(slist1);
-    
+    let rr_lb = RoundRobinLoadBalancer::new(slist0);
+    let lc_lb = LeastConnectionsLoadBalancer::new(slist1);
+
+    check_loadbalancer(rr_lb);
+    check_loadbalancer(lc_lb);
+
     println!("Hello, world!");
+}
+
+fn check_loadbalancer(lb: impl LoadBalancer) {
+    let alb = Arc::new(RwLock::new(lb));
+    let mut lb0 = alb.write().unwrap();
+
+    for i in [0, 1, 2, 3, 4]{
+        let server = lb0.next_server();
+        println!("server {} {}", i, server);
+    }
 }
