@@ -5,6 +5,15 @@ pub struct RoundRobinLoadBalancer {
    current_index: usize 
 }
 
+impl RoundRobinLoadBalancer {
+    pub fn new(servers: Vec<String>) -> Self {
+        Self {
+            servers,
+            current_index: 0
+        }
+    }
+}
+
 impl LoadBalancer for RoundRobinLoadBalancer {
     fn next_server(&mut self) -> String {
         let server = self.servers[self.current_index].clone();
