@@ -1,34 +1,45 @@
-use std::sync::{Arc, RwLock};
 
-use load_balancer::services::{round_robin::RoundRobinLoadBalancer, 
-                              least_connections::LeastConnectionsLoadBalancer};
-use load_balancer::domain::load_balancer::LoadBalancer;
+use std::{convert::Infallible, net::SocketAddr, sync::Arc};
 
-fn main() {
-    let mut slist0 = Vec::new();
+use hyper::{
+    service::{make_service_fn, service_fn},
+    Body, Request, Response, Server
+};
 
-    slist0.push("localhost:8001".to_owned());
-    slist0.push("localhost:8002".to_owned());
-    slist0.push("localhost:8003".to_owned());
-    slist0.push("localhost:8004".to_owned());
-    slist0.push("localhost:8005".to_owned());
+use tokio::sync::RwLock;
     
-    let slist1 = slist0.clone();
+use load_balancer::{LoadBalancer, LoadBalancerAlgorithm};
 
-    let rr_lb = RoundRobinLoadBalancer::new(slist0);
-    let lc_lb = LeastConnectionsLoadBalancer::new(slist1);
-    let arr_lb = Arc::new(RwLock::new(rr_lb));
-    let alc_lb = Arc::new(RwLock::new(lc_lb));
+async fn handle(
+    req: Request<Body>,
+    load_balancer: Arc<RwLock<LoadBalancer>>,
+    lba:&LoadBalancerAlgorithm) -> Result<Response<Body>, hyper::Error> {
+    load_balancer.write().await.forward_request(req, lba).await
+}
+    
+#[tokio::main]
+async fn main() {
+    let worker_hosts = vec![
+        "http://localhost:3000".to_string(),
+        "http://localhost:3001".to_string(),
+        "http://localhost:3002".to_string(),            
+        "http://localhost:3003".to_string(),
+        "http://localhost:3004".to_string(),
+    ];
+    
+    let load_balancer = Arc::new(RwLock::new(
+        LoadBalancer::new(worker_hosts).expect("failed to create load balancer"),
+    ));
 
-    check_loadbalancer(arr_lb, "RR");
-    check_loadbalancer(alc_lb, "LC");
+    let addr: SocketAddr = SocketAddr::from(([127, 0, 0, 1], 1337));
+    
+    let server = Server::bind(&addr).serve(make_service_fn(move |_conn| {
+        let load_balancer = load_balancer.clone();
+        async move { Ok::<_, Infallible>(service_fn(move |req| handle(req, load_balancer.clone(), &LoadBalancerAlgorithm::RoundRobin))) }
+    }));
+    
+    if let Err(e) = server.await {
+        println!("error: {}", e);
+    }          
 }
 
-fn check_loadbalancer(alb: Arc<RwLock<impl LoadBalancer>>, name: &str) {
-    let mut lb0 = alb.write().unwrap();
-
-    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]{
-        let server = lb0.next_server();
-        println!("server {} {} {}", name, i, server);
-    }
-}
