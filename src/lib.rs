@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use hyper::{
     client::ResponseFuture,
-    Body, Client, Request, /*Response, Server,*/ Uri,
+    Body, Client, Request, Uri,
 };
 
 
@@ -135,7 +135,6 @@ pub fn next_server_round_robin(lb: &mut LoadBalancer, len: usize) -> String {
     server.inc();
     lb.inuse_worker = Some(lb.current_worker);
     lb.current_worker = (lb.current_worker + 1) % len;
-    println!("rr {:?} {}", server.clone(), lb.current_worker.clone());
     server.server()
 }
 
@@ -153,7 +152,6 @@ pub fn next_server_least_connections(lb: &mut LoadBalancer, len: usize) -> Strin
     server.inc();
     lb.inuse_worker = Some(index);
     lb.current_worker = (index+1) % len;
-    println!("lc {:?} {}", server.clone(), lb.current_worker.clone());
     server.server()
 }
 
