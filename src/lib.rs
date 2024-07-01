@@ -46,7 +46,7 @@ impl Default for Server {
 #[derive(Debug)]
 pub enum LoadBalancerAlgorithm {
     RoundRobin,
-    LeastConnection
+    LeastConnections
 }
 #[derive(Debug)]
 pub enum LoadBalancerError {
@@ -125,7 +125,7 @@ impl LBAlgorithm for LoadBalancer {
         let len:usize = self.worker_hosts.len();
         match lba {
             &LoadBalancerAlgorithm::RoundRobin => next_server_round_robin(self, len),
-            &LoadBalancerAlgorithm::LeastConnection => next_server_least_connections(self, len)
+            &LoadBalancerAlgorithm::LeastConnections => next_server_least_connections(self, len)
         }
     }
 }
