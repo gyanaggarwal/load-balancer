@@ -13,7 +13,10 @@ async fn handle(
     req: Request<Body>,
     load_balancer: Arc<RwLock<LoadBalancer>>,
     lba:&LoadBalancerAlgorithm) -> Result<Response<Body>, hyper::Error> {
-    load_balancer.write().await.forward_request(req, lba).await
+    let mut load_balancer = load_balancer.write().await;
+    let result = load_balancer.forward_request(req, lba).await;
+    load_balancer.dec_conn();
+    result
 }
     
 #[tokio::main]
