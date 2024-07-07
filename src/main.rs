@@ -9,10 +9,9 @@ use tokio::sync::RwLock;
     
 use load_balancer::{LoadBalancer, LoadBalancerAlgorithm};
 
-async fn handle(
-    req: Request<Body>,
+async fn handle(req: Request<Body>,
     load_balancer: Arc<RwLock<LoadBalancer>>,
-    lba:&LoadBalancerAlgorithm) -> Result<Response<Body>, hyper::Error> {
+    lba: LoadBalancerAlgorithm) -> Result<Response<Body>, hyper::Error> {
     let mut load_balancer = load_balancer.write().await;
     let result = load_balancer.forward_request(req, lba).await;
     load_balancer.dec_conn();
@@ -37,11 +36,13 @@ async fn main() {
     
     let server = Server::bind(&addr).serve(make_service_fn(move |_conn| {
         let load_balancer = load_balancer.clone();
-        async move { Ok::<_, Infallible>(service_fn(move |req| handle(req, load_balancer.clone(), &LoadBalancerAlgorithm::RoundRobin))) }
+        async move { Ok::<_, Infallible>(service_fn(move |req| handle(req, load_balancer.clone(), LoadBalancerAlgorithm::RoundRobin))) }
     }));
     
+    println!("Listening on http://{}", addr);
+
     if let Err(e) = server.await {
         println!("error: {}", e);
-    }          
-}
+    }   
+ }
 

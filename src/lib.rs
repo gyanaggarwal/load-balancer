@@ -2,17 +2,17 @@ use std::str::FromStr;
 
 use hyper::{
     client::ResponseFuture,
-    Body, Client, Request, Uri,
+    Body, Client, Request, Uri
 };
 
 
 #[derive(Debug, Clone)]
-pub struct Server {
+pub struct Worker {
     server: String,
     no_conn: isize
 }
 
-impl Server {
+impl Worker {
     pub fn new(server: String) -> Self {
         Self {
             server,
@@ -37,13 +37,13 @@ impl Server {
     }
 }
 
-impl Default for Server {
+impl Default for Worker {
     fn default() -> Self {
-        Server::new("".to_string())
+        Worker::new("".to_string())
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum LoadBalancerAlgorithm {
     RoundRobin,
     LeastConnections
@@ -55,7 +55,7 @@ pub enum LoadBalancerError {
 }
 pub struct LoadBalancer {
     pub client: Client<hyper::client::HttpConnector>,
-    pub worker_hosts: Vec<Server>,
+    pub worker_hosts: Vec<Worker>,
     pub current_worker: usize,
     pub inuse_worker: Option<usize>
 }
@@ -68,7 +68,7 @@ impl LoadBalancer {
 
         let mut worker_hosts = Vec::new();
         for server in svec {
-            worker_hosts.push(Server::new(server))
+            worker_hosts.push(Worker::new(server))
         };
 
         Ok(Self {client: Client::new(), 
@@ -86,7 +86,7 @@ impl LoadBalancer {
         }
     }
 
-    pub fn forward_request(&mut self, req: Request<Body>, lba: &LoadBalancerAlgorithm) -> ResponseFuture {
+    pub fn forward_request(&mut self, req: Request<Body>, lba: LoadBalancerAlgorithm) -> ResponseFuture {
         let mut worker_uri = self.next_server(lba).to_owned();
 
         // Extract the path and query from the original request
@@ -117,15 +117,15 @@ impl LoadBalancer {
 }
 
 pub trait LBAlgorithm {
-    fn next_server(&mut self, lba: &LoadBalancerAlgorithm) -> String;
+    fn next_server(&mut self, lba: LoadBalancerAlgorithm) -> String;
 }
 
 impl LBAlgorithm for LoadBalancer {
-    fn next_server(&mut self, lba: &LoadBalancerAlgorithm) -> String {
+    fn next_server(&mut self, lba: LoadBalancerAlgorithm) -> String {
         let len:usize = self.worker_hosts.len();
         match lba {
-            &LoadBalancerAlgorithm::RoundRobin => next_server_round_robin(self, len),
-            &LoadBalancerAlgorithm::LeastConnections => next_server_least_connections(self, len)
+            LoadBalancerAlgorithm::RoundRobin => next_server_round_robin(self, len),
+            LoadBalancerAlgorithm::LeastConnections => next_server_least_connections(self, len)
         }
     }
 }
@@ -140,7 +140,7 @@ pub fn next_server_round_robin(lb: &mut LoadBalancer, len: usize) -> String {
 
 pub fn next_server_least_connections(lb: &mut LoadBalancer, len: usize) -> String {
     let mut first = true;
-    let mut server = &mut Server::default();
+    let mut server = &mut Worker::default();
     let mut index : usize = 0;
     for (i, s) in lb.worker_hosts.iter_mut().enumerate() {
         if first || s.no_conn < server.no_conn {
@@ -154,5 +154,4 @@ pub fn next_server_least_connections(lb: &mut LoadBalancer, len: usize) -> Strin
     lb.current_worker = (index+1) % len;
     server.server()
 }
-
 
