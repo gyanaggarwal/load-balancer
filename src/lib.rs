@@ -1,21 +1,24 @@
 use std::str::FromStr;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use hyper::{
     client::ResponseFuture,
-    Body, Client, Request, Uri
+    Body, Client, Request, Uri, Response
 };
 
+pub mod constants;
 
 #[derive(Debug, Clone)]
 pub struct Worker {
-    server: String,
+    worker: String,
     no_conn: isize
 }
 
 impl Worker {
-    pub fn new(server: String) -> Self {
+    pub fn new(worker: String) -> Self {
         Self {
-            server,
+            worker,
             no_conn: 0
         }
     }
@@ -32,8 +35,8 @@ impl Worker {
         self.update(-1);
     }
 
-    pub fn server(&self) -> String {
-        self.server.clone()
+    pub fn worker(&self) -> String {
+        self.worker.clone()
     }
 }
 
@@ -56,7 +59,7 @@ pub enum LoadBalancerError {
 pub struct LoadBalancer {
     pub client: Client<hyper::client::HttpConnector>,
     pub worker_hosts: Vec<Worker>,
-    pub current_worker: usize,
+    pub next_worker: usize,
     pub inuse_worker: Option<usize>
 }
 
@@ -67,27 +70,27 @@ impl LoadBalancer {
         }
 
         let mut worker_hosts = Vec::new();
-        for server in svec {
-            worker_hosts.push(Worker::new(server))
+        for worker in svec {
+            worker_hosts.push(Worker::new(worker))
         };
 
         Ok(Self {client: Client::new(), 
                  worker_hosts, 
-                 current_worker: 0,
+                 next_worker: 0,
                  inuse_worker: None})
     }
 
     pub fn dec_conn(&mut self) {
         match self.inuse_worker {
-            Some(index) => {let server = &mut self.worker_hosts[index];
-                                    server.dec();
+            Some(index) => {let worker = &mut self.worker_hosts[index];
+                                    worker.dec();
                                     self.inuse_worker = None;},
             None => return
         }
     }
 
-    pub fn forward_request(&mut self, req: Request<Body>, lba: LoadBalancerAlgorithm) -> ResponseFuture {
-        let mut worker_uri = self.next_server(lba).to_owned();
+    pub fn forward_request(&mut self, req: Request<Body>, lba: LoadBalancerAlgorithm, debug_mode: bool) -> ResponseFuture {
+        let mut worker_uri = self.next_worker(lba, debug_mode).to_owned();
 
         // Extract the path and query from the original request
         if let Some(path_and_query) = req.uri().path_and_query() {
@@ -117,41 +120,56 @@ impl LoadBalancer {
 }
 
 pub trait LBAlgorithm {
-    fn next_server(&mut self, lba: LoadBalancerAlgorithm) -> String;
+    fn next_worker(&mut self, lba: LoadBalancerAlgorithm, debug_mode: bool) -> String;
 }
 
 impl LBAlgorithm for LoadBalancer {
-    fn next_server(&mut self, lba: LoadBalancerAlgorithm) -> String {
+    fn next_worker(&mut self, lba: LoadBalancerAlgorithm, debug_mode: bool) -> String {
         let len:usize = self.worker_hosts.len();
         match lba {
-            LoadBalancerAlgorithm::RoundRobin => next_server_round_robin(self, len),
-            LoadBalancerAlgorithm::LeastConnections => next_server_least_connections(self, len)
+            LoadBalancerAlgorithm::RoundRobin => next_worker_round_robin(self, debug_mode, len),
+            LoadBalancerAlgorithm::LeastConnections => next_worker_least_connections(self, debug_mode, len)
         }
     }
 }
 
-pub fn next_server_round_robin(lb: &mut LoadBalancer, len: usize) -> String {
-    let server = &mut lb.worker_hosts[lb.current_worker];
-    server.inc();
-    lb.inuse_worker = Some(lb.current_worker);
-    lb.current_worker = (lb.current_worker + 1) % len;
-    server.server()
+pub fn next_worker_round_robin(lb: &mut LoadBalancer, debug_mode: bool, len: usize) -> String {
+    let worker = &mut lb.worker_hosts[lb.next_worker];
+    worker.inc();
+    lb.inuse_worker = Some(lb.next_worker);
+    lb.next_worker = (lb.next_worker + 1) % len;
+    if debug_mode {
+        println!("conn {}, assigned_worker {}, next_worker {}", worker.no_conn, worker.worker(), lb.next_worker);
+    }
+    worker.worker()
 }
 
-pub fn next_server_least_connections(lb: &mut LoadBalancer, len: usize) -> String {
+pub fn next_worker_least_connections(lb: &mut LoadBalancer, debug_mode: bool, len: usize) -> String {
     let mut first = true;
-    let mut server = &mut Worker::default();
+    let mut worker = &mut Worker::default();
     let mut index : usize = 0;
     for (i, s) in lb.worker_hosts.iter_mut().enumerate() {
-        if first || s.no_conn < server.no_conn {
-            server = s;
+        if first || s.no_conn < worker.no_conn {
+            worker = s;
             index = i
         }
         first = false;
     }
-    server.inc();
+    worker.inc();
     lb.inuse_worker = Some(index);
-    lb.current_worker = (index+1) % len;
-    server.server()
+    lb.next_worker = (index+1) % len;
+    if debug_mode {
+        println!("conn {}, assigned_worker {}, next_worker {}", worker.no_conn, worker.worker(), lb.next_worker);
+    }
+    worker.worker()
 }
 
+pub async fn handle(req: Request<Body>,
+    load_balancer: Arc<RwLock<LoadBalancer>>,
+    lba: LoadBalancerAlgorithm,
+    debug_mode: bool) -> Result<Response<Body>, hyper::Error> {
+    let mut load_balancer = load_balancer.write().await;
+    let result = load_balancer.forward_request(req, lba, debug_mode).await;
+    load_balancer.dec_conn();
+    result
+}
