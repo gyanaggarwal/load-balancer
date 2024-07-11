@@ -8,9 +8,14 @@ use hyper::{
 use tokio::sync::RwLock;
 use dotenvy::dotenv;
 
+use rand::thread_rng;
+use rand::seq::SliceRandom;
+
 use load_balancer::handle;
 use load_balancer::lb_service::{NextWorker, LoadBalancer, LoadBalancerAlgorithm};
 use load_balancer::constants::DEBUG_MODE;
+
+const CHOICE: [isize; 15] = [0, -1, 0, -1, 0, 0, -1, -1, 0, 0, 0, 0, -1, 0, 0];
 
 #[tokio::main]
 async fn main() {
@@ -45,10 +50,12 @@ async fn run_normal() {
 fn run_debug() {
     let mut load_balancer = create_load_balancer();
 
-    for i in [0,1,2,3,4,5,6,7,8,9,10] {
+    for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] {
         let lba = if i%2 == 0 {LoadBalancerAlgorithm::RoundRobin} else {LoadBalancerAlgorithm::LeastConnections};
         let worker = load_balancer.next_worker(lba.clone());
-        println!("assigned_worker {} conn {} {:?}", worker, load_balancer.get_conn(&worker), lba);
+        let value = update_value();
+        load_balancer.update(&worker, value);
+        println!("worker: {} {:?}", worker, lba);
         println!("--------------------");
     }
 }
@@ -63,6 +70,11 @@ fn create_load_balancer() -> LoadBalancer {
     ];
 
     LoadBalancer::new(worker_hosts).unwrap()
+}
+
+fn update_value() -> isize {
+    let mut rng = thread_rng();
+    *CHOICE.choose(&mut rng).unwrap()
 }
 
 

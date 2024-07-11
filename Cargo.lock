@@ -304,6 +304,7 @@ dependencies = [
  "dotenvy",
  "hyper",
  "lazy_static",
+ "rand",
  "tokio",
  "tower",
 ]
