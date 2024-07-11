@@ -4,14 +4,16 @@ use hyper::Client;
 
 type Worker = String;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum LoadBalancerAlgorithm {
+    #[default]
     RoundRobin,
     LeastConnections
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum LoadBalancerError {
     EmptyWorkerList,
+    #[default]
     UnexpectedError
 }
 
