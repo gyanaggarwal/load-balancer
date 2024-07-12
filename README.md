@@ -12,6 +12,7 @@ It maintains in its state the number of active connections
 It also maintains next_worker data (used by Round Robin Algorithm)
 
 Example: there are 5 workers 
+
          W1 with 2 active connections 
          W2 with 1 active connection
          W3 with 1 active connection
