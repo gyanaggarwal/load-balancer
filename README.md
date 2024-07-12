@@ -2,12 +2,12 @@
 Proxy-Based Load Balancer with Adaptive Decision Engine
 
 This repo implements both RoundRobin and LeastConnections based algorithm.
-One can dymanically choose an algorithm to use to compute the next_worker.
-next_worker accepts LoadBalancerAlgorithm(RoundRobin/LeastConnectios) 
+One can dymanically choose an algorithm.
+next_worker function accepts LoadBalancerAlgorithm(RoundRobin/LeastConnectios) 
 as a parameter and executes the corresponding algorithm to compute 
-the correct next_worker.
+the correct next_worker (output of next_worker function).
 
-This repo maintains(increment/decrement) the number of active connections 
+It maintains in its state the number of active connections 
 (used by Least Connections Algorithm) for each worker. 
 It also maintains next_worker data (used by Round Robin Algorithm)
 
