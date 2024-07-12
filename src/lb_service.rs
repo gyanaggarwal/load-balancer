@@ -5,12 +5,6 @@ use hyper::Client;
 type Worker = String;
 
 #[derive(Debug, Clone, Default, PartialEq)]
-pub enum LoadBalancerAlgorithm {
-    #[default]
-    RoundRobin,
-    LeastConnections
-}
-#[derive(Debug, Clone, Default, PartialEq)]
 pub enum LoadBalancerError {
     EmptyWorkerList,
     #[default]
@@ -19,13 +13,6 @@ pub enum LoadBalancerError {
 
 pub fn default_worker() -> Worker {
     "".to_owned()
-}
-
-pub struct LoadBalancer {
-    pub client: Client<hyper::client::HttpConnector>,
-    pub worker_hosts: Vec<Worker>,
-    pub next_worker: usize,
-    pub worker_conn_map: HashMap<Worker, isize>
 }
 
 impl LoadBalancer {
@@ -75,6 +62,20 @@ impl LoadBalancer {
     pub fn get_conn(&self, worker: &Worker) -> isize {
         *self.worker_conn_map.get(worker).unwrap()
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub enum LoadBalancerAlgorithm {
+    #[default]
+    RoundRobin,
+    LeastConnections
+}
+
+pub struct LoadBalancer {
+    pub client: Client<hyper::client::HttpConnector>,
+    pub worker_hosts: Vec<Worker>,
+    pub next_worker: usize,
+    pub worker_conn_map: HashMap<Worker, isize>
 }
 
 pub trait NextWorker {
