@@ -61,7 +61,7 @@ fn run_debug(remove_conn: bool) {
         let value = update_value(choice);
         load_balancer.update(&worker, value);
         let conn02 = load_balancer.get_conn(&worker);
-        println!("worker: {} conn: {} update_conn:{} updated_conn: {} {:?}", worker, conn01, value, conn02, lba);
+        println!("worker: {} conn: {} update: {value:>2} updated_conn: {} {:?}", worker, conn01, conn02, lba);
         println!("--------------------");
     }
 }
