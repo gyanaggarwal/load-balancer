@@ -17,6 +17,8 @@ use load_balancer::constants::{DEBUG_MODE, REMOVE_CONN};
 
 const CHOICE0: [isize; 15] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const CHOICE1: [isize; 15] = [0, -1, 0, -1, 0, 0, -1, -1, 0, -1, 0, 0, 0, -1, 0];
+const NO_CHANGE: &str = " *no change conn* ";
+const DEC_CONN:  &str = " *decrement conn* ";
 
 #[tokio::main]
 async fn main() {
@@ -59,11 +61,12 @@ fn run_debug(remove_conn: bool) {
         let worker = load_balancer.next_worker(lba.clone());
         let conn01 = load_balancer.get_conn(&worker);
         let value = update_value(choice);
+        let dec_msg = if value < 0 {DEC_CONN} else {NO_CHANGE};
         if value < 0 {
             load_balancer.dec_conn(&worker);
         }
         let conn02 = load_balancer.get_conn(&worker);
-        println!("worker: {} conn: {} update: {value:>2} updated_conn: {} {:?}", worker, conn01, conn02, lba);
+        println!("worker: {} conn: {} {dec_msg} updated_conn: {} {:?}", worker, conn01, conn02, lba);
         println!("-----------------------------");
     }
     println!("");
