@@ -57,9 +57,11 @@ fn run_debug(remove_conn: bool) {
     for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] {
         let lba = if i%2 == 0 {LoadBalancerAlgorithm::RoundRobin} else {LoadBalancerAlgorithm::LeastConnections};
         let worker = load_balancer.next_worker(lba.clone());
+        let conn01 = load_balancer.get_conn(&worker);
         let value = update_value(choice);
         load_balancer.update(&worker, value);
-        println!("worker: {} {:?}", worker, lba);
+        let conn02 = load_balancer.get_conn(&worker);
+        println!("worker: {} conn: {} update_conn:{} updated_conn: {} {:?}", worker, conn01, value, conn02, lba);
         println!("--------------------");
     }
 }
