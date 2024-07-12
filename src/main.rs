@@ -13,16 +13,18 @@ use rand::seq::SliceRandom;
 
 use load_balancer::handle;
 use load_balancer::lb_service::{NextWorker, LoadBalancer, LoadBalancerAlgorithm};
-use load_balancer::constants::DEBUG_MODE;
+use load_balancer::constants::{DEBUG_MODE, REMOVE_CONN};
 
-const CHOICE: [isize; 15] = [0, -1, 0, -1, 0, 0, -1, -1, 0, 0, 0, 0, -1, 0, 0];
+const CHOICE0: [isize; 15] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+const CHOICE1: [isize; 15] = [0, -1, 0, -1, 0, 0, -1, -1, 0, -1, 0, 0, -1, -1, 0];
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
     let debug_mode = DEBUG_MODE.to_owned();
-    if debug_mode {
-        run_debug()
+    let remove_conn: bool = REMOVE_CONN.to_owned();
+     if debug_mode {
+        run_debug(remove_conn)
     } else {
         run_normal().await
     }
@@ -47,13 +49,15 @@ async fn run_normal() {
     }   
 }
 
-fn run_debug() {
+fn run_debug(remove_conn: bool) {
     let mut load_balancer = create_load_balancer();
+    let choice = if remove_conn {CHOICE1} else {CHOICE0};
 
+    println!("--------------------");
     for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] {
         let lba = if i%2 == 0 {LoadBalancerAlgorithm::RoundRobin} else {LoadBalancerAlgorithm::LeastConnections};
         let worker = load_balancer.next_worker(lba.clone());
-        let value = update_value();
+        let value = update_value(choice);
         load_balancer.update(&worker, value);
         println!("worker: {} {:?}", worker, lba);
         println!("--------------------");
@@ -72,9 +76,9 @@ fn create_load_balancer() -> LoadBalancer {
     LoadBalancer::new(worker_hosts).unwrap()
 }
 
-fn update_value() -> isize {
+fn update_value(choice: [isize; 15]) -> isize {
     let mut rng = thread_rng();
-    *CHOICE.choose(&mut rng).unwrap()
+    *choice.choose(&mut rng).unwrap()
 }
 
 
