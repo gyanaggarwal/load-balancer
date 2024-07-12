@@ -50,25 +50,25 @@ impl LoadBalancer {
         })
     }
 
-    pub fn update(&mut self, worker: &Worker, uvalue: isize) {
+    fn update_conn(&mut self, worker: &Worker, uvalue: isize) {
         if let Some(conn) = self.worker_conn_map.get_mut(worker) {
             *conn += uvalue;
         }
     }
 
-    pub fn inc(&mut self, worker: &Worker) {
-        self.update(worker, 1);
+    fn inc_conn(&mut self, worker: &Worker) {
+        self.update_conn(worker, 1);
     }
 
-    pub fn dec(&mut self, worker: &Worker) {
-        self.update(worker, -1);
+    pub fn dec_conn(&mut self, worker: &Worker) {
+        self.update_conn(worker, -1);
     }
 
-    pub fn worker(&self, index: usize) -> Worker {
+    fn worker(&self, index: usize) -> Worker {
         self.worker_hosts[index].clone()
     }
 
-    pub fn host_len(&self) -> usize {
+    fn host_len(&self) -> usize {
         self.worker_hosts.len()
     }
 
@@ -90,14 +90,14 @@ impl NextWorker for LoadBalancer {
         }
     }
 }
-pub fn next_worker_round_robin(lb: &mut LoadBalancer, len: usize) -> Worker {
+fn next_worker_round_robin(lb: &mut LoadBalancer, len: usize) -> Worker {
     let worker = lb.worker(lb.next_worker);
-    lb.inc(&worker);
+    lb.inc_conn(&worker);
     lb.next_worker = (lb.next_worker+1) % len;
     worker
 }
 
-pub fn next_worker_least_connections(lb: &mut LoadBalancer, len: usize) -> Worker {
+fn next_worker_least_connections(lb: &mut LoadBalancer, len: usize) -> Worker {
     let mut first = true;
     let mut worker = default_worker();
     let mut conn: isize = 0;
@@ -111,7 +111,7 @@ pub fn next_worker_least_connections(lb: &mut LoadBalancer, len: usize) -> Worke
         }
         first = false;
     }
-    lb.inc(&worker);
+    lb.inc_conn(&worker);
     lb.next_worker = (worker_index+1) % len;
     worker
 }

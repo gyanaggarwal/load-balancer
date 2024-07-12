@@ -16,7 +16,7 @@ use load_balancer::lb_service::{NextWorker, LoadBalancer, LoadBalancerAlgorithm}
 use load_balancer::constants::{DEBUG_MODE, REMOVE_CONN};
 
 const CHOICE0: [isize; 15] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-const CHOICE1: [isize; 15] = [0, -1, 0, -1, 0, 0, -1, -1, 0, -1, 0, 0, -1, -1, 0];
+const CHOICE1: [isize; 15] = [0, -1, 0, -1, 0, 0, -1, -1, 0, -1, 0, 0, 0, -1, 0];
 
 #[tokio::main]
 async fn main() {
@@ -53,17 +53,20 @@ fn run_debug(remove_conn: bool) {
     let mut load_balancer = create_load_balancer();
     let choice = if remove_conn {CHOICE1} else {CHOICE0};
 
-    println!("--------------------");
+    println!("");
     for i in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] {
         let lba = if i%2 == 0 {LoadBalancerAlgorithm::RoundRobin} else {LoadBalancerAlgorithm::LeastConnections};
         let worker = load_balancer.next_worker(lba.clone());
         let conn01 = load_balancer.get_conn(&worker);
         let value = update_value(choice);
-        load_balancer.update(&worker, value);
+        if value < 0 {
+            load_balancer.dec_conn(&worker);
+        }
         let conn02 = load_balancer.get_conn(&worker);
         println!("worker: {} conn: {} update: {value:>2} updated_conn: {} {:?}", worker, conn01, conn02, lba);
-        println!("--------------------");
+        println!("-----------------------------");
     }
+    println!("");
 }
 
 fn create_load_balancer() -> LoadBalancer {
