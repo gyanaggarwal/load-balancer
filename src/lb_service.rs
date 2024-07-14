@@ -90,6 +90,7 @@ impl NextWorker for LoadBalancer {
         }
     }
 }
+
 fn next_worker_round_robin(lb: &mut LoadBalancer) -> Worker {
     let worker = lb.worker(lb.next_worker);
     update_state(lb, &worker, lb.next_worker);
