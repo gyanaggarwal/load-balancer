@@ -11,7 +11,7 @@ pub enum LoadBalancerError {
     UnexpectedError
 }
 
-pub fn default_worker() -> Worker {
+fn default_worker() -> Worker {
     "".to_owned()
 }
 
@@ -84,20 +84,19 @@ pub trait NextWorker {
 
 impl NextWorker for LoadBalancer {
     fn next_worker(&mut self, lba: LoadBalancerAlgorithm) -> Worker {
-        let len = self.host_len();
         match lba {
-            LoadBalancerAlgorithm::RoundRobin       => next_worker_round_robin(self, len),
-            LoadBalancerAlgorithm::LeastConnections => next_worker_least_connections(self, len)
+            LoadBalancerAlgorithm::RoundRobin       => next_worker_round_robin(self),
+            LoadBalancerAlgorithm::LeastConnections => next_worker_least_connections(self)
         }
     }
 }
-fn next_worker_round_robin(lb: &mut LoadBalancer, len: usize) -> Worker {
+fn next_worker_round_robin(lb: &mut LoadBalancer) -> Worker {
     let worker = lb.worker(lb.next_worker);
-    update_state(lb, &worker, lb.next_worker, len);
+    update_state(lb, &worker, lb.next_worker);
     worker
 }
 
-fn next_worker_least_connections(lb: &mut LoadBalancer, len: usize) -> Worker {
+fn next_worker_least_connections(lb: &mut LoadBalancer) -> Worker {
     let mut first = true;
     let mut worker = default_worker();
     let mut conn: isize = 0;
@@ -111,11 +110,12 @@ fn next_worker_least_connections(lb: &mut LoadBalancer, len: usize) -> Worker {
         }
         first = false;
     }
-    update_state(lb, &worker, worker_index, len);
+    update_state(lb, &worker, worker_index);
     worker
 }
 
-fn update_state(lb: &mut LoadBalancer, worker: &Worker, worker_index: usize, len: usize) {
+fn update_state(lb: &mut LoadBalancer, worker: &Worker, worker_index: usize) {
+    let len = lb.host_len();
     lb.inc_conn(worker);
     lb.next_worker = (worker_index+1) % len;
 }
