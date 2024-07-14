@@ -93,8 +93,7 @@ impl NextWorker for LoadBalancer {
 }
 fn next_worker_round_robin(lb: &mut LoadBalancer, len: usize) -> Worker {
     let worker = lb.worker(lb.next_worker);
-    lb.inc_conn(&worker);
-    lb.next_worker = (lb.next_worker+1) % len;
+    update_state(lb, &worker, lb.next_worker, len);
     worker
 }
 
@@ -112,8 +111,11 @@ fn next_worker_least_connections(lb: &mut LoadBalancer, len: usize) -> Worker {
         }
         first = false;
     }
-    lb.inc_conn(&worker);
-    lb.next_worker = (worker_index+1) % len;
+    update_state(lb, &worker, worker_index, len);
     worker
 }
 
+fn update_state(lb: &mut LoadBalancer, worker: &Worker, worker_index: usize, len: usize) {
+    lb.inc_conn(worker);
+    lb.next_worker = (worker_index+1) % len;
+}
